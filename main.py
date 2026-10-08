@@ -17,6 +17,7 @@ import hashlib
 import hmac
 import json
 import logging
+import sys
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -109,6 +110,8 @@ async def process_call(payload: CallPayload) -> ProcessResult:
         log.warning("call_id=%s skipped: no phone in ticket", payload.call_id)
         return result
 
+    print("ticket to send to STOCRM:", json.dumps(ticket, ensure_ascii=False, indent=2))
+
     # --- HTTP Request node (onError = continueErrorOutput) ------------------
     result.stocrm = await stocrm.create_offer(ticket, settings)
     if not result.stocrm.get("ok"):
@@ -123,7 +126,7 @@ async def process_call(payload: CallPayload) -> ProcessResult:
 # --------------------------------------------------------------------------- #
 # Routes
 # --------------------------------------------------------------------------- #
-@app.post("/webhook/nalog-taxi", response_model=ProcessResult)
+@app.post("/okolomota-ctosrm/webhook/add-offer", response_model=ProcessResult)
 async def webhook_nalog_taxi(
     request: Request,
     background_tasks: BackgroundTasks,

@@ -8,6 +8,7 @@ import logging
 from typing import Any
 
 import httpx
+from pydantic import json
 
 from config import Settings
 from models import AgentOutput, CallPayload
@@ -23,13 +24,15 @@ def has_phone(ticket: dict[str, Any]) -> bool:
     return bool(phone and str(phone).strip())
 
 
-def map_ticket_fields(payload: CallPayload, agent_output: AgentOutput, settings: Settings) -> dict[str, Any]:
+def map_ticket_fields(
+    payload: CallPayload, agent_output: AgentOutput, settings: Settings
+) -> dict[str, Any]:
     """The Set node. Note the phone rule matches n8n: it takes ONLY the LLM's
     phone. The caller-ID fallback is an opt-in extra (see settings)."""
     ticket = {
         "phone": agent_output.phone.strip(),
-        "title": agent_output.client.strip(),
-        "comment": agent_output.result,
+        "title": "FARES TEST" + agent_output.client.strip(),
+        "comment": "FARES TEST " + agent_output.result,
         # Bikes can be phrased without a brand.
         "moto": agent_output.brand,
         "Model": agent_output.bike_model,
@@ -61,8 +64,8 @@ def build_offer_body(ticket: dict[str, Any], settings: Settings) -> dict[str, An
         "SID": settings.stocrm_sid,
         "PHONE": ticket["phone"],
         "TITLE": ticket.get("title", ""),
-        "SOURCE_ID": settings.stocrm_source_id,   # integer in n8n (unquoted)
-        "BOARD_ID": settings.stocrm_board_id,     # integer in n8n (unquoted)
+        "SOURCE_ID": settings.stocrm_source_id,  # integer in n8n (unquoted)
+        "BOARD_ID": settings.stocrm_board_id,  # integer in n8n (unquoted)
         "COMMENT": comment,
     }
 
@@ -72,11 +75,9 @@ async def create_offer(ticket: dict[str, Any], settings: Settings) -> dict[str, 
     has onError=continueErrorOutput, so a failed ticket must not kill the run."""
     body = build_offer_body(ticket, settings)
     url = f"https://{settings.stocrm_host}{OFFER_PATH}"
-
     if settings.dry_run:
         log.info("DRY_RUN — would POST %s: %s", url, body)
-        return {"ok": True, "dry_run": True, "url": url, "request": body}
-
+        return {"ok": True, "dry_run FOO": True, "url": url, "request": body}
     try:
         async with httpx.AsyncClient(timeout=settings.stocrm_timeout) as client:
             response = await client.post(url, json=body)
@@ -87,7 +88,9 @@ async def create_offer(ticket: dict[str, Any], settings: Settings) -> dict[str, 
         except ValueError:
             parsed = None
         if not ok:
-            log.error("STOCRM returned %s for call: %s", response.status_code, text[:500])
+            log.error(
+                "STOCRM returned %s for call: %s", response.status_code, text[:500]
+            )
         return {
             "ok": ok,
             "status_code": response.status_code,

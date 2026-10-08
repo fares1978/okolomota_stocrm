@@ -60,7 +60,7 @@ curl http://127.0.0.1:8000/health
 The drop-in webhook route is:
 
 ```text
-POST /webhook/nalog-taxi
+POST /okolomota-ctosrm/webhook/add-offer
 ```
 
 It accepts the call JSON directly. It also accepts an n8n-style wrapper where the actual call payload is under `body` only if you send it through `/process` after unwrapping in your proxy; the recommended integration sends the body directly.
@@ -68,7 +68,7 @@ It accepts the call JSON directly. It also accepts an n8n-style wrapper where th
 For a synchronous call:
 
 ```bash
-curl -X POST 'http://127.0.0.1:8000/webhook/nalog-taxi' \
+curl -X POST 'http://127.0.0.1:8000/okolomota-ctosrm/webhook/add-offer' \
   -H 'Content-Type: application/json' \
   --data-binary @sample_payload.json
 ```

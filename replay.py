@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Local end-to-end check without touching STOCRM for real.
 
     DRY_RUN=true python replay.py                 # full pipeline, offer only logged
@@ -29,7 +28,12 @@ async def main() -> int:
     from models import CallPayload
 
     settings = get_settings()
-    payload = CallPayload.model_validate_json(open(args.file, encoding="utf-8").read())
+
+    def load_payload(path: str) -> CallPayload:
+        with open(path, encoding="utf-8") as payload_file:
+            return CallPayload.model_validate_json(payload_file.read())
+
+    payload = await asyncio.to_thread(load_payload, args.file)
 
     print("=" * 70)
     print("PROMPT SENT TO THE MODEL")
@@ -38,7 +42,10 @@ async def main() -> int:
     print("=" * 70)
 
     agent_output = await extract_call_data(payload, settings)
-    print("AGENT OUTPUT:", json.dumps(agent_output.as_russian_dict(), ensure_ascii=False, indent=2))
+    print(
+        "AGENT OUTPUT:",
+        json.dumps(agent_output.as_russian_dict(), ensure_ascii=False, indent=2),
+    )
 
     if args.extract_only:
         return 0
