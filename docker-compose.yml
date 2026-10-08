@@ -1,0 +1,14 @@
+services:
+  okolomota:
+    build: .
+    container_name: okolomota
+    restart: unless-stopped
+    env_file: .env
+    # Loopback only: Nginx on the host is the public entry point.
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

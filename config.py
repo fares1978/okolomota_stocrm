@@ -38,9 +38,9 @@ class Settings(BaseSettings):
     # The caller sends x-yapogovoru-signature: sha256=<hmac of the raw body>
     shared_secret: str | None = None
 
-    # ---------- Behaviour ----------
+    # ---------- Behavior ----------
     # The n8n Set node takes the phone from the LLM output only, so this
-    # defaults to False to keep the original behaviour. Turn it on if you
+    # defaults to False to keep the original behavior. Turn it on if you
     # would rather fall back to body.phone_number than skip the ticket.
     phone_fallback_to_caller_id: bool = False
     # Dry run: log the STOCRM payload instead of sending it.

@@ -1,0 +1,8 @@
+.git
+.venv
+__pycache__
+*.py[oc]
+.env
+.mypy_cache
+okolomota-n8n.json
+README.md
