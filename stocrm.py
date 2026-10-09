@@ -31,8 +31,8 @@ def map_ticket_fields(
     phone. The caller-ID fallback is an opt-in extra (see settings)."""
     ticket = {
         "phone": agent_output.phone.strip(),
-        "title": "FARES TEST" + agent_output.client.strip(),
-        "comment": "FARES TEST " + agent_output.result,
+        "title": agent_output.client.strip(),
+        "comment": agent_output.result,
         # Bikes can be phrased without a brand.
         "moto": agent_output.brand,
         "Model": agent_output.bike_model,
