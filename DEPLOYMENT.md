@@ -23,6 +23,17 @@ The container port is bound to `127.0.0.1` only, so the app is reachable from th
 
 The VPS pulls code through a read-only GitHub deploy key (`/root/.ssh/okolomota_deploy`, SSH host alias `github-okolomota`), registered on `fares1978/okolomota_stocrm`.
 
+## OpenRouter through a VPN
+
+OpenRouter returns `403 Access denied by security policy` for this VPS's IP (it is hosted in Russia). So the app's OpenRouter calls go through an OpenVPN tunnel; STOCRM is called directly.
+
+- `docker-compose.yml` runs a second container, `vpn` (gluetun), which is an OpenVPN client plus an HTTP proxy on port 8888 inside the Docker network. The VPN lives inside that container only, so the VPS's own routing and SSH are not affected.
+- The app container sets `HTTPS_PROXY=http://vpn:8888` and `NO_PROXY=okolomota.stocrm.ru,...`. `httpx` picks these up automatically, so there is no code change.
+- The VPN profile is `/opt/okolomota/vpn/custom.ovpn` on the server. It contains keys, so it is gitignored and must be copied to the server by hand (`scp`, then `chmod 600`).
+- The profile downloaded from the OpenVPN Access Server points at `89.110.86.50`, which is not reachable. We changed the `remote` line to `remote 109.107.187.176 443`. If the profile is regenerated, apply the same fix, or correct the "Hostname or IP address" in the Access Server admin UI (Network Settings) so new profiles are right.
+- Test the tunnel: `docker compose logs vpn` should end with `Initialization Sequence Completed` and a public IP in the Netherlands.
+- If offers fail with proxy or connection errors, check `docker compose logs vpn` first. The free Access Server license allows 2 simultaneous connections.
+
 ## Updating after you push changes
 
 1. Push to GitHub (both remotes: `origin` and `brigade`).

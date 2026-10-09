@@ -1,9 +1,38 @@
 services:
+  # OpenVPN client + HTTP proxy. Only the app's OpenRouter calls go through it:
+  # the VPS provider's IP is blocked by OpenRouter, so we exit via the VPN.
+  # The VPN stays inside this container; the host's routing and SSH are untouched.
+  vpn:
+    image: qmcgaw/gluetun
+    container_name: okolomota-vpn
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      VPN_SERVICE_PROVIDER: custom
+      VPN_TYPE: openvpn
+      OPENVPN_CUSTOM_CONFIG: /gluetun/custom.ovpn
+      HTTPPROXY: "on"
+      # Lets the app container reach the proxy; the port is not published on the host.
+      FIREWALL_INPUT_PORTS: "8888"
+    volumes:
+      # Contains keys. Lives on the server only (see .gitignore).
+      - ./vpn/custom.ovpn:/gluetun/custom.ovpn:ro
+
   okolomota:
     build: .
     container_name: okolomota
     restart: unless-stopped
     env_file: .env
+    environment:
+      # OpenRouter goes through the VPN. STOCRM is reached directly.
+      HTTPS_PROXY: http://vpn:8888
+      NO_PROXY: okolomota.stocrm.ru,localhost,127.0.0.1
+    depends_on:
+      vpn:
+        condition: service_healthy
     # Loopback only: Nginx on the host is the public entry point.
     ports:
       - "127.0.0.1:8000:8000"

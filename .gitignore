@@ -11,3 +11,6 @@ wheels/
 .env
 okolomota-n8n.json
 .mypy_cache
+
+# OpenVPN client profile (contains keys)
+vpn/
