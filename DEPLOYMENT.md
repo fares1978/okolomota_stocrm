@@ -18,8 +18,8 @@ caller (n8n / partner) --HTTPS--> Nginx (443, 80) --> 127.0.0.1:8000 --> contain
 | Secrets | `/opt/okolomota/.env` and `/opt/okolomota/vpn/custom.ovpn`, on the server only. Never commit them. |
 | Nginx site | `/etc/nginx/sites-available/okolomota`, versioned as `nginx/okolomota.conf` |
 | Firewall | `ufw` allows only ports 22, 80, 443 |
-| Webhook URL | `https://45.80.70.196/okolomota-ctosrm/webhook/add-offer` (POST) |
-| Health check | `https://45.80.70.196/health` |
+| Webhook URL | `https://45-80-70-196.sslip.io/okolomota-ctosrm/webhook/add-offer` (POST) |
+| Health check | `https://45-80-70-196.sslip.io/health` |
 | STOCRM | host, board and source IDs come from `.env` (`STOCRM_HOST`, `STOCRM_BOARD_ID`, `STOCRM_SOURCE_ID`) |
 
 The app port is bound to `127.0.0.1` only, so the app is reachable from the internet only through Nginx.
@@ -58,15 +58,18 @@ Signing in n8n:
 - **The dry-run log prints the full STOCRM request, including the SID.** Mask it, and be careful when pasting logs.
 - The timestamp header is not validated (replay).
 
-## HTTPS (Let's Encrypt, IP address certificate)
+## HTTPS (Let's Encrypt, sslip.io hostname)
 
-- Let's Encrypt issues certificates for bare IPs only as **short-lived (about 6 days)**, using the `shortlived` profile. The Certbot `nginx` plugin does not support IPs yet, so the certificate was obtained with `certonly --webroot` and is referenced from `nginx/okolomota.conf` by path.
-- Certbot 5.4+ is required. It is installed in a virtualenv at `/opt/certbot` (symlinked to `/usr/local/bin/certbot`), because the Ubuntu package is too old. Upgrade with `/opt/certbot/bin/pip install -U certbot`.
+- Hostname: `45-80-70-196.sslip.io` (also `45.80.70.196.sslip.io`). sslip.io is a free third-party DNS service that resolves any name containing an IP to that IP. We do not own the domain. It is a stop-gap until a real domain is bought. Risks: it depends on sslip.io's DNS, and it is not on the Public Suffix List, so Let's Encrypt's weekly new-certificate limit is shared with every sslip.io user (renewals are exempt).
+- The certificate is named `sslip` (`/etc/letsencrypt/live/sslip/`), issued with `certbot certonly --webroot --webroot-path /var/www/certbot --cert-name sslip -d 45-80-70-196.sslip.io -d 45.80.70.196.sslip.io`. It is valid for **90 days**, and Certbot renews it about 30 days before expiry.
+- The `nginx` Certbot plugin is not used. The certificate paths are written by hand in `nginx/okolomota.conf`.
+- Requests to the bare IP over HTTPS get a hostname mismatch error, because the certificate has no IP in it. Callers must use the hostname. (We briefly used a 6-day IP certificate, `--preferred-profile shortlived --ip-address`, and removed it.)
+- Certbot 5.x is installed in a virtualenv at `/opt/certbot` (symlinked to `/usr/local/bin/certbot`), because the Ubuntu package is old. Upgrade with `/opt/certbot/bin/pip install -U certbot`.
 - Renewal: `certbot-renew.timer` (systemd) runs `certbot renew` twice a day. `/etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh` reloads Nginx after each renewal.
 - Check it: `systemctl list-timers certbot-renew.timer`, `certbot certificates`, `certbot renew --dry-run`.
-- **If renewal fails, HTTPS callers start failing within about 6 days.** Check `journalctl -u certbot-renew` first.
+- **If renewal fails, the certificate expires after 90 days** and HTTPS callers start failing. Certbot starts renewing about 30 days before that, so check `journalctl -u certbot-renew` if `certbot certificates` shows less than ~25 days left.
 - Challenge files are served from `/var/www/certbot` over port 80, so port 80 must stay open.
-- No HSTS: browsers ignore it for bare IP addresses. Add it when a domain is used.
+- No HSTS yet. Add it once a permanent domain is used.
 - Port 80 still proxies to the app, so callers using `http://` keep working. After they switch to `https://`, redirect or close it (keep the `/.well-known/acme-challenge/` path open).
 
 ## OpenRouter through a VPN
@@ -97,7 +100,7 @@ OpenRouter returns `403 Access denied by security policy` for this VPS's IP (it 
 3. Check it came up:
    ```bash
    docker compose ps                       # both containers "healthy"
-   curl -s https://45.80.70.196/health
+   curl -s https://45-80-70-196.sslip.io/health
    docker compose logs --tail 30
    ```
 
